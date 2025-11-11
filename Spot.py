@@ -2,9 +2,9 @@ import pygame
 
 RED = (255, 0, 0) # Not Path
 GREEN = (0, 255, 0) # Final Path
-BLUE = (0, 255, 0) # Start
+BLUE = (0, 0, 255) # Start
 PURPLE = (128, 0, 128) # End
-YELLOW = (255, 255, 0) 
+YELLOW = (255, 255, 0) # Open
 ORANGE = (255, 165 ,0)
 GREY = (128, 128, 128) 
 TURQUOISE = (64, 224, 208)
@@ -53,9 +53,15 @@ class Spot:
 
     def reset(self):
         self.color = WHITE;
+    
+    def make_open(self):
+        self.color = YELLOW;
+    
+    def make_path(self):
+        self.color = GREEN;
 
     def make_closed(self):
-        self.color = RED;
+        self.color = GREY;
 
     def make_barrier(self):
         self.color = BLACK;
