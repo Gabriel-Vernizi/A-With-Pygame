@@ -149,7 +149,7 @@ def get_clicked_pos(pos,rows,cols):
  
     return row,col
 
-def main(save_gif=False):
+def main(save_gif=False,path_gif=r"Results/",title="A_star_solution"):
 
     start = None
     end = None
@@ -219,6 +219,9 @@ def main(save_gif=False):
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and not started:
+                    
+                    started = 1
+
                     for row in grid:
                         for spot in row:
                             spot.update_neighbor(grid)
@@ -243,11 +246,48 @@ def main(save_gif=False):
                     )
 
                     if save_gif and path_found:
-                        print("Salvando GIF...")
+                        print("Making GIF...")
 
-                        imageio.mimsave('A_star_solution.gif', frames_para_gif, fps=30)
-                        print("Sucesso! 'A_star_solution.gif' salvo na pasta.")
+                        imageio.mimsave(f'{path_gif}{title}.gif', frames_para_gif, fps=30)
+                        print(f"'{title}.gif' saved in {path_gif}.")
                 
+                elif event.key == pygame.K_SPACE and started:
+                    for row in grid:
+                        for spot in row:
+                            if spot.is_barrier() or spot.is_start() or spot.is_end():
+                                continue
+                            else:
+                                spot.reset()
+                    
+                    for row in grid:
+                        for spot in row:
+                            spot.update_neighbor(grid)
+
+                    if save_gif:
+                        frames_para_gif = []
+                    else:
+                        frames_para_gif = None
+                        
+                    draw_gif = lambda frames_list=None: draw(
+                        WINDOW, grid, ROWS, COLS, width=WIDTH, height=HEIGHT, 
+                        frames_list=frames_list
+                    )
+
+                    path_found = algorithm(
+                        draw_gif,
+                        grid,
+                        start,
+                        end,
+                        mu=MU,
+                        frames_list=frames_para_gif
+                    )
+
+                    if save_gif and path_found:
+                        print("Making GIF...")
+
+                        imageio.mimsave(f'{path_gif}{title}.gif', frames_para_gif, fps=30)
+                        print(f"'{title}.gif' saved in {path_gif}.")
+
                 if event.key == pygame.K_r:
                     restart = 1
                     for row in grid:
@@ -262,4 +302,4 @@ def main(save_gif=False):
     pygame.quit()
 
 if __name__ == '__main__':
-    main(save_gif=False)
+    main(save_gif=True,path_gif=r"Results/",title="A_star_solvesMaze")
