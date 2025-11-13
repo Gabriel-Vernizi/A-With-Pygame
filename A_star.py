@@ -1,12 +1,32 @@
 import pygame
 import math
 import heapq as hq
-from Spot import *
+from Spot import Spot
+import json
 
 # For gif generation
 import numpy as np
 import imageio
 
+# ------------- #
+
+from mazes import generate_maze_prim
+
+# ------------- #
+
+# Colors
+RED = (255, 0, 0) # Not Path
+GREEN = (0, 255, 0) # Final Path
+BLUE = (0, 0, 255) # Start
+PURPLE = (128, 0, 128) # End
+YELLOW = (255, 255, 0) # Open
+ORANGE = (255, 165 ,0)
+GREY = (128, 128, 128) 
+TURQUOISE = (64, 224, 208)
+WHITE = (255, 255, 255) # Default
+BLACK = (0, 0, 0) # Barrier
+
+# ------------- #
 
 WIDTH = 1200
 HEIGHT = 720
@@ -14,10 +34,12 @@ WINDOW = pygame.display.set_mode((WIDTH,HEIGHT))
 pygame.display.set_caption("A* Path Finding")
 
 
-ROWS = 30
+ROWS = 60
 COLS = math.floor(5/3 * ROWS)
 
-MU = 1.5
+MU = 2
+
+# ------------- #
 
 def heuristc_manhattan(p1:Spot,p2:Spot) -> (int):
     x1,y1 = p1.get_pos()
@@ -80,7 +102,6 @@ def algorithm(draw,grid,start,end,mu=1,frames_list=None):
 
     return False
 
-
 def reconstruct_path(came_from, end_spot, start_spot, draw, frames_list=None):
     current = came_from[end_spot]
     while current != start_spot:
@@ -88,6 +109,8 @@ def reconstruct_path(came_from, end_spot, start_spot, draw, frames_list=None):
         draw(frames_list=frames_list)
         current = came_from[current]
 
+
+# ------------- #
 
 def make_grid(rows,cols,width=WIDTH,height=HEIGHT):
     grid = []
@@ -121,7 +144,6 @@ def barrier_limit(grid,rows,cols,width=WIDTH,height=HEIGHT):
         grid[j][0].make_barrier()
         grid[j][cols-1].make_barrier()
 
-
 def draw(win,grid,rows,cols,width=WIDTH,height=HEIGHT,frames_list=None):
     win.fill(WHITE)
 
@@ -138,6 +160,8 @@ def draw(win,grid,rows,cols,width=WIDTH,height=HEIGHT,frames_list=None):
 
     pygame.display.update()
 
+# ------------- #
+
 def get_clicked_pos(pos,rows,cols):
 
 
@@ -149,12 +173,55 @@ def get_clicked_pos(pos,rows,cols):
  
     return row,col
 
-def main(save_gif=False,path_gif=r"Results/",title="A_star_solution"):
+def save_last_config(grid,start,end,file='last_config.json'):
+    config_data = {
+            'start': start.get_pos(),
+            'end': end.get_pos(),
+            'barriers': []
+        }
+
+    for row in grid:
+        for spot in row:
+            if spot.is_barrier():
+                config_data['barriers'].append(spot.get_pos())
+
+        with open(file, 'w') as f:
+            json.dump(config_data, f)
+            
+    print(f"Configuração salva em '{file}'")
+
+def load_config(grid,config_file):
+    with open(config_file,'r') as f:
+        config_data = json.load(f)
+
+    for i in range(1,len(grid)):
+        for j in range(1,len(grid[i])):
+            grid[i][j].reset()
+    
+    barrier_limit(grid,ROWS,COLS,WIDTH,HEIGHT)
+
+    start_pos_x,start_pos_y = config_data['start']
+    start = grid[start_pos_x][start_pos_y]
+    start.make_start()
+
+    end_pos_x,end_pos_y = config_data['end']
+    end = grid[end_pos_x][end_pos_y]
+    end.make_end()
+
+    for pos in config_data['barriers']:
+        grid[pos[0]][pos[1]].make_barrier()
+    
+    return start,end
+
+# ------------- #
+def main(save_gif=False,path_gif=r"Results/",title="A_star_solution",save_config=False):
 
     start = None
     end = None
 
     started = False
+
+    frames_para_gif = []
 
     grid = make_grid(ROWS,COLS)  
     
@@ -163,7 +230,7 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution"):
     running = True
     
     barrier_limit(grid=grid,rows=ROWS,cols=COLS,width=WIDTH,height=HEIGHT)
-
+    
     restart = 0
     while running:
         draw(WINDOW,grid,rows=ROWS,cols=COLS,width=WIDTH,height=HEIGHT)
@@ -225,11 +292,6 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution"):
                     for row in grid:
                         for spot in row:
                             spot.update_neighbor(grid)
-
-                    if save_gif:
-                        frames_para_gif = []
-                    else:
-                        frames_para_gif = None
                         
                     draw_gif = lambda frames_list=None: draw(
                         WINDOW, grid, ROWS, COLS, width=WIDTH, height=HEIGHT, 
@@ -262,11 +324,6 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution"):
                     for row in grid:
                         for spot in row:
                             spot.update_neighbor(grid)
-
-                    if save_gif:
-                        frames_para_gif = []
-                    else:
-                        frames_para_gif = None
                         
                     draw_gif = lambda frames_list=None: draw(
                         WINDOW, grid, ROWS, COLS, width=WIDTH, height=HEIGHT, 
@@ -288,7 +345,7 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution"):
                         imageio.mimsave(f'{path_gif}{title}.gif', frames_para_gif, fps=30)
                         print(f"'{title}.gif' saved in {path_gif}.")
 
-                if event.key == pygame.K_r:
+                elif event.key == pygame.K_r:
                     restart = 1
                     for row in grid:
                         for spot in row:
@@ -297,9 +354,31 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution"):
                     start = None
                     end = None
 
+                elif event.key == pygame.K_g:
+                    save_gif = not save_gif
+                    if save_gif:
+                        print('Salvamento de GIF ativado')
+                    else:
+                        print('Salvamento de GIF desativado')
+                
+                elif event.key == pygame.K_s:
+                    save_config = not save_config
+                    save_last_config(grid,start,end,file='last_config.json')
+                    if save_config:
+                        print('Salvamento de simulação feito. Salvo em ./last_config.json')
+                        
+                elif event.key == pygame.K_l:
+                    start,end = load_config(grid,r'./last_config.json')
+                
+                elif event.key == pygame.K_m:
+                    generate_maze_prim(lambda: draw(WINDOW,grid,ROWS,COLS),grid,ROWS,COLS,start_pos=(1,1))
+                    start = None
+                    end = None
+        
         clock.tick(60) 
 
     pygame.quit()
 
+
 if __name__ == '__main__':
-    main(save_gif=True,path_gif=r"Results/",title="A_star_solvesMaze")
+    main(title='A_star_Example')
