@@ -113,8 +113,8 @@ In this section, there are some examples of the algorithm running.
 
 <p align="center">
   <img src="Results\A_star_solution.gif" alt="A* Search" width="30%" style="margin-right: 20px;">
-  <img src="Results\A_star_solves_Maze.gif" alt="A* Solving 'Maze'" width="30%" style="margin-right:20px;">
-  <img src="Results\Wighted_A_Star_Solves_Maze.gif" alt="Weighter A* Solving Maze" width="30%"> 
+  <img src="Results\A_star_Solves_maze.gif" alt="A* Solving 'Maze'" width="30%" style="margin-right:20px;">
+  <img src="Results\Wighted_A_Star_Solves_maze.gif" alt="Weighter A* Solving Maze" width="30%"> 
 </p>
 
 ---
