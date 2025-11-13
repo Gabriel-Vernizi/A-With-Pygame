@@ -53,7 +53,7 @@ def generate_maze_prim(draw, grid, rows, cols,start_pos = (1,1)):
             
             draw()
 
-    # Atualiza vizinhos para o A* funcionar depois
+    # Update neigbors
     for row in grid:
         for spot in row:
             spot.update_neighbor(grid)
