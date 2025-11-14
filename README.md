@@ -112,9 +112,18 @@ This results in a **Perfect Maze** (a Minimum Spanning Tree), meaning there is e
 In this section, there are some examples of the algorithm running.
 
 <p align="center">
-  <img src="Results\A_star_solution.gif" alt="A* Search" width="30%" style="margin-right: 20px;">
-  <img src="Results\A_star_Solves_maze.gif" alt="A* Solving 'Maze'" width="30%" style="margin-right:20px;">
-  <img src="Results\Weighted_A_Star_Solves_maze.gif" alt="Weighter A* Solving Maze" width="30%"> 
+  <img src="Results\A_Star_Example.gif" alt="A* Search" width="45%" style="margin-right: 20px;">
+  <img src="Results\Weighted_A_Star_Example.gif" alt="A* Solving 'Maze'" width="45%" style="">
+</p>
+
+<p align="center">
+  <img src="Results\A_Star_Solves_Maze.gif" alt="A* Search" width="45%" style="margin-right: 20px;">
+  <img src="Results\Weighted_A_Star_Solves_Maze.gif" alt="A* Solving 'Maze'" width="45%" style="">
+</p>
+
+<p align="center">
+  <img src="Results\Maze_Generation.gif" alt="A* Search" width="45%" style="margin-right: 20px;">
+  <img src="Results\Maze_Generation2.gif" alt="A* Solving 'Maze'" width="45%" style="">
 </p>
 
 ---

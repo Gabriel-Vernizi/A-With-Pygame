@@ -37,7 +37,10 @@ pygame.display.set_caption("A* Path Finding")
 ROWS = 60
 COLS = math.floor(5/3 * ROWS)
 
-MU = 2
+MU = 3
+
+save_frame = 0
+n_frame = 5
 
 # ------------- #
 
@@ -46,7 +49,7 @@ def heuristc_manhattan(p1:Spot,p2:Spot) -> (int):
     x2,y2 = p2.get_pos()
     return abs(x1-x2) + abs(y1-y2)
 
-def algorithm(draw,grid,start,end,mu=1,frames_list=None):
+def algorithm(draw,grid,start,end,mu=1,writer=None):
     inserted = 0
     open_set = []
 
@@ -71,16 +74,16 @@ def algorithm(draw,grid,start,end,mu=1,frames_list=None):
         open_set_hash.remove(current)
 
         if current == end:
-            reconstruct_path(came_from, end, start, draw, frames_list=frames_list)
+            reconstruct_path(came_from, end, start, draw, writer=writer)
             end.make_end()
             start.make_start()
 
-            if frames_list is not None:
-                draw(frames_list=frames_list)
+            draw(writer=writer)
+
             return True
         
         for neighbor in current.neighbors:
-            temp_g_score = g_score[current] + 1 # Cost 1 to move to neighbor
+            temp_g_score = g_score[current] + heuristc_manhattan(current,neighbor) # Cost 1 to move to neighbor
 
             if temp_g_score < g_score[neighbor]:
                 came_from[neighbor] = current
@@ -95,20 +98,19 @@ def algorithm(draw,grid,start,end,mu=1,frames_list=None):
                     open_set_hash.add(neighbor)
                     neighbor.make_open()
 
-        draw(frames_list=frames_list)
+        draw(writer=writer)
         
         if current != start:
             current.make_closed()
 
     return False
 
-def reconstruct_path(came_from, end_spot, start_spot, draw, frames_list=None):
+def reconstruct_path(came_from, end_spot, start_spot, draw, writer=None):
     current = came_from[end_spot]
     while current != start_spot:
         current.make_path()
-        draw(frames_list=frames_list)
+        draw(writer=writer)
         current = came_from[current]
-
 
 # ------------- #
 
@@ -144,7 +146,7 @@ def barrier_limit(grid,rows,cols,width=WIDTH,height=HEIGHT):
         grid[j][0].make_barrier()
         grid[j][cols-1].make_barrier()
 
-def draw(win,grid,rows,cols,width=WIDTH,height=HEIGHT,frames_list=None):
+def draw(win,grid,rows,cols,width=WIDTH,height=HEIGHT,writer=None):
     win.fill(WHITE)
 
     for row in grid:
@@ -152,11 +154,15 @@ def draw(win,grid,rows,cols,width=WIDTH,height=HEIGHT,frames_list=None):
             spot.draw(win)
 
     draw_grid(win,rows=rows,cols=cols,width=width,height=height)
+    global save_frame
+
+    if writer is not None and save_frame % n_frame == 0:
+
+        scaled_win = pygame.transform.scale(win,(WIDTH//2,HEIGHT//2))
+        frame = np.transpose(pygame.surfarray.array3d(scaled_win), (1, 0, 2))
+        writer.append_data(frame)
     
-    if frames_list is not None:
-    # (width, height, 3) -> (height, width, 3)
-        frame = np.transpose(pygame.surfarray.array3d(win), (1, 0, 2))
-        frames_list.append(frame)
+    save_frame += 1
 
     pygame.display.update()
 
@@ -168,8 +174,11 @@ def get_clicked_pos(pos,rows,cols):
     gap_row = HEIGHT//rows
     gap_col = WIDTH//cols
 
-    y,x = pos
-    row,col = x//gap_col, y//gap_row
+    pos_x,pos_y = pos
+    
+    row = pos_y//gap_row
+    col = pos_x//gap_col
+    return row,col
  
     return row,col
 
@@ -185,8 +194,8 @@ def save_last_config(grid,start,end,file='last_config.json'):
             if spot.is_barrier():
                 config_data['barriers'].append(spot.get_pos())
 
-        with open(file, 'w') as f:
-            json.dump(config_data, f)
+    with open(file, 'w') as f:
+        json.dump(config_data, f)
             
     print(f"Configuração salva em '{file}'")
 
@@ -214,6 +223,7 @@ def load_config(grid,config_file):
     return start,end
 
 # ------------- #
+
 def main(save_gif=False,path_gif=r"Results/",title="A_star_solution",save_config=False):
 
     start = None
@@ -225,10 +235,13 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution",save_config
 
     grid = make_grid(ROWS,COLS)  
     
+    alternate_mu = False
+    temp_mu = 1
+
     pygame.init()
     clock = pygame.time.Clock()
     running = True
-    
+
     barrier_limit(grid=grid,rows=ROWS,cols=COLS,width=WIDTH,height=HEIGHT)
     
     restart = 0
@@ -240,7 +253,6 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution",save_config
             restart = 0
 
         for event in pygame.event.get():
-            
 
             if event.type == pygame.QUIT:
                 print("fechou")
@@ -285,17 +297,31 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution",save_config
 
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and not started:
+                if event.key == pygame.K_SPACE:
                     
-                    started = 1
+                    if not started:
+                        started = 1
+                    else:
+                        for row in grid:
+                            for spot in row:
+                                if spot.is_barrier() or spot.is_start() or spot.is_end():
+                                    continue
+                                else:
+                                    spot.reset()
 
                     for row in grid:
                         for spot in row:
                             spot.update_neighbor(grid)
+
+                    if save_gif:
+                        gif_path=f'{path_gif}{title}.gif'
+                        writer = imageio.get_writer(gif_path,fps=60)
+                    else:
+                        writer = None
                         
-                    draw_gif = lambda frames_list=None: draw(
+                    draw_gif = lambda writer=None: draw(
                         WINDOW, grid, ROWS, COLS, width=WIDTH, height=HEIGHT, 
-                        frames_list=frames_list
+                        writer=writer
                     )
 
                     path_found = algorithm(
@@ -303,47 +329,13 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution",save_config
                         grid,
                         start,
                         end,
-                        mu=MU,
-                        frames_list=frames_para_gif
+                        mu=temp_mu,
+                        writer=writer
                     )
 
-                    if save_gif and path_found:
-                        print("Making GIF...")
-
-                        imageio.mimsave(f'{path_gif}{title}.gif', frames_para_gif, fps=30)
-                        print(f"'{title}.gif' saved in {path_gif}.")
-                
-                elif event.key == pygame.K_SPACE and started:
-                    for row in grid:
-                        for spot in row:
-                            if spot.is_barrier() or spot.is_start() or spot.is_end():
-                                continue
-                            else:
-                                spot.reset()
-                    
-                    for row in grid:
-                        for spot in row:
-                            spot.update_neighbor(grid)
-                        
-                    draw_gif = lambda frames_list=None: draw(
-                        WINDOW, grid, ROWS, COLS, width=WIDTH, height=HEIGHT, 
-                        frames_list=frames_list
-                    )
-
-                    path_found = algorithm(
-                        draw_gif,
-                        grid,
-                        start,
-                        end,
-                        mu=MU,
-                        frames_list=frames_para_gif
-                    )
-
-                    if save_gif and path_found:
-                        print("Making GIF...")
-
-                        imageio.mimsave(f'{path_gif}{title}.gif', frames_para_gif, fps=30)
-                        print(f"'{title}.gif' saved in {path_gif}.")
+                    if writer is not None:
+                        writer.close()
+                        print(f'{title}.gif salvo em {path_gif}')
 
                 elif event.key == pygame.K_r:
                     restart = 1
@@ -371,14 +363,63 @@ def main(save_gif=False,path_gif=r"Results/",title="A_star_solution",save_config
                     start,end = load_config(grid,r'./last_config.json')
                 
                 elif event.key == pygame.K_m:
-                    generate_maze_prim(lambda: draw(WINDOW,grid,ROWS,COLS),grid,ROWS,COLS,start_pos=(1,1))
+                    if save_gif:
+                        gif_path=f'{path_gif}{title}.gif'
+                        writer = imageio.get_writer(gif_path,fps=60)
+                    else:
+                        writer = None
+
+                    draw_maze = lambda writer=None: draw(
+                        WINDOW, grid, ROWS, COLS, width=WIDTH, height=HEIGHT, 
+                        writer=writer
+                    )
+
+                    generate_maze_prim(draw_maze,grid,ROWS,COLS,start_pos=(1,1),writer=writer)
                     start = None
                     end = None
-        
+                
+                elif event.key == pygame.K_c:
+                    alternate_mu = not alternate_mu
+
+                    if alternate_mu:
+                        temp_mu = MU
+                        print(f"$mu$ alterado para {temp_mu}")
+                    else:
+                        temp_mu = 1
+                        print(f'$mu$ alterado para {temp_mu}')
+
+                elif event.key == pygame.K_p:
+                    if save_gif:
+                        gif_path=f'{path_gif}{title}.gif'
+                        writer = imageio.get_writer(gif_path,fps=60)
+                    else:
+                        writer = None
+
+                    draw_maze = lambda writer=None: draw(
+                        WINDOW, grid, ROWS, COLS, width=WIDTH, height=HEIGHT, 
+                        writer=writer
+                    )
+
+                    generate_maze_prim(draw_maze,grid,ROWS,COLS,start_pos=(1,1),writer=writer)
+                    start = None
+                    end = None
+                    
+                    if writer is not None:
+                        writer.close()
+                        print(f'{title}.gif salvo em {path_gif}')
+                    
+                    break
         clock.tick(60) 
 
     pygame.quit()
 
 
 if __name__ == '__main__':
-    main(title='A_star_Example')
+    #main(title='A_Star_Example')
+    #main(title='Weighted_A_Star_Example')
+
+    #main(title='A_Star_Solves_Maze')
+    main(title='Weighted_A_Star_Solves_Maze')
+    
+    #main(title="Maze_Generation")
+    #main(title="Maze_Generation2")

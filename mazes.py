@@ -1,14 +1,14 @@
 import random
 
 
-def generate_maze_prim(draw, grid, rows, cols,start_pos = (1,1)):
+def generate_maze_prim(draw, grid, rows, cols,start_pos = (1,1),writer=None):
 
 
     for row in grid:
         for spot in row:
             spot.make_barrier()
-    
-    draw() # Reset
+
+    draw(writer=writer)
 
     frontier = []
 
@@ -51,7 +51,7 @@ def generate_maze_prim(draw, grid, rows, cols,start_pos = (1,1)):
             
             add_frontier(c_row, c_col)
             
-            draw()
+            draw(writer=writer)
 
     # Update neigbors
     for row in grid:
